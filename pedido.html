@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seu pedido — Utilidades Pra Casa</title>
+<link rel="icon" type="image/png" href="/img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2235615467384682');
+fbq('track', 'PageView');
+</script>
+<!-- End Meta Pixel Code -->
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--line:#e8e8ee;--txt:#17171c;--muted:#71717e;--red:#e11d48;--grad:linear-gradient(135deg,#e11d48,#f97316);--green:#16a34a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 28px;max-width:420px;width:100%;text-align:center}
+.mark{width:56px;height:56px;border-radius:14px;margin:0 auto 14px}
+h1{font-size:22px;font-weight:800;margin-bottom:8px}
+p{color:var(--muted);font-size:14px;margin-bottom:18px}
+.badge{display:inline-block;font-size:13px;font-weight:700;padding:6px 16px;border-radius:99px;margin-bottom:14px}
+.badge.paid{background:#dcfce7;color:#15803d}
+.badge.pending{background:#fef9c3;color:#a16207}
+.badge.err{background:var(--bg);color:var(--muted)}
+.btn{display:inline-block;background:var(--grad);color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:99px;text-decoration:none}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--red);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <img class="mark" src="/img/logo.png" alt="Utilidades Pra Casa">
+  <div id="loading"><div class="spin"></div><p>Verificando seu pedido…</p></div>
+  <div id="result" hidden>
+    <div class="badge pending" id="st">—</div>
+    <h1 id="h">Pedido</h1>
+    <p id="msg"></p>
+    <a class="btn" href="/">VOLTAR PARA A LOJA</a>
+  </div>
+</div>
+<script>
+const FN='https://qiavgoutaxfaldsgggly.supabase.co/functions/v1/order-status';
+const id=location.pathname.split('/').filter(Boolean)[1]||'';
+const t=new URLSearchParams(location.search).get('t')||'';
+const show=(cls,txt,h,msg)=>{
+  document.getElementById('loading').hidden=true;
+  const r=document.getElementById('result');r.hidden=false;
+  const b=document.getElementById('st');b.className='badge '+cls;b.textContent=txt;
+  document.getElementById('h').textContent=h;
+  document.getElementById('msg').textContent=msg;
+};
+(async()=>{
+  if(!id||!t)return show('err','Pedido não identificado','Ops','Não conseguimos localizar este pedido.');
+  try{
+    const r=await fetch(`${FN}?id=${id}&t=${t}`);
+    const d=await r.json();
+    if(!d.ok)throw 0;
+    if(d.status==='pending_payment')show('pending','Aguardando pagamento','Quase lá','Seu pedido foi criado e aguarda a confirmação do pagamento.');
+    else if(['paid','processing','shipped','delivered'].includes(d.status)){
+      show('paid','Pagamento confirmado','Pedido confirmado!','Recebemos seu pagamento. Você vai receber os detalhes e o rastreio no e-mail.');
+      if(!localStorage.getItem('fj_paid_'+id)){
+        localStorage.setItem('fj_paid_'+id,'1');
+        const v=(d.total_cents||0)/100;
+        fbq('track','Purchase',{value:v,currency:'BRL'},{eventID:'p-'+id});
+        fetch(FN.replace('order-status','meta-capi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event_name:'Purchase',event_id:'p-'+id,value:v,currency:'BRL',url:location.href})}).catch(()=>{});
+      }
+    }
+    else show('err','Status: '+d.status,'Pedido','Entre em contato se precisar de ajuda com seu pedido.');
+  }catch(e){show('err','Erro de verificação','Ops','Não foi possível verificar agora. Tente novamente em instantes.');}
+})();
+</script>
+</body>
+</html>
